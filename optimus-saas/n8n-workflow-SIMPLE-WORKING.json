@@ -1,0 +1,68 @@
+{
+  "name": "SIMPLE WORKING - AI Article Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "ai-article-generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simple working version\nconst inputData = $input.first();\n\n// Extract prompt from wherever it is\nlet prompt = inputData.json?.prompt || inputData.body?.prompt || inputData.json?.body?.prompt || '';\n\nconsole.log('Received prompt:', prompt);\n\nif (!prompt || !prompt.trim()) {\n  return {\n    success: false,\n    title: '',\n    content: '',\n    error: 'Le prompt est requis et ne peut pas être vide',\n    timestamp: new Date().toISOString()\n  };\n}\n\n// For now, return a test article\nreturn {\n  success: true,\n  title: 'Article de Test - Marketing Digital',\n  content: '# Marketing Digital : Les Clés du Succès\\n\\nVotre prompt était: \"' + prompt + '\"\\n\\n## Introduction\\n\\nLe marketing digital est devenu incontournable pour toutes les entreprises. Voici les stratégies essentielles à connaître.\\n\\n## Les Réseaux Sociaux\\n\\nLes plateformes sociales offrent des opportunités uniques pour atteindre votre audience.\\n\\n## Conclusion\\n\\nMaîtriser le marketing digital est la clé du succès moderne.',\n  error: null,\n  timestamp: new Date().toISOString(),\n  wordCount: 150,\n  characterCount: 750\n};"
+      },
+      "id": "simple-response",
+      "name": "Simple Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "response-node",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Simple Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

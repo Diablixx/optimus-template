@@ -1,0 +1,179 @@
+{
+  "name": "AI Article Generation - Cloud (FIXED)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "4a32ea36-5e3d-4d55-9c7c-8a9b0e1f2d3c",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "ai-article-generation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.prompt}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "8b41ea37-6f4e-5e66-ad8d-9bac1f2e3d4e",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "complete",
+        "model": "gpt-4",
+        "prompt": "=Tu es un expert en rédaction d'articles marketing en français. Écris un article complet et engageant sur le sujet suivant : \"{{$json.prompt}}\"\n\nL'article doit :\n- Avoir un titre accrocheur (maximum 60 caractères)\n- Contenir entre 500 et 1000 mots\n- Être structuré avec des sous-titres\n- Être optimisé SEO\n- Être écrit dans un style professionnel mais accessible\n- Inclure des conseils pratiques\n\nFormat de réponse :\nTITRE: [Le titre de l'article]\nCONTENU: [Le contenu complet de l'article avec sous-titres en markdown]",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000
+        }
+      },
+      "id": "9c52fb48-7g5f-6f77-be9e-acbd2f3e4f5g",
+      "name": "Generate Article",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse OpenAI response and format for our application\nconst openaiResponse = $input.first().json.choices[0].text;\n\ntry {\n  // Extract title and content from the formatted response\n  const titleMatch = openaiResponse.match(/TITRE:\\s*(.+)/i);\n  const contentMatch = openaiResponse.match(/CONTENU:\\s*([\\s\\S]+)/i);\n  \n  let title = '';\n  let content = '';\n  \n  if (titleMatch && titleMatch[1]) {\n    title = titleMatch[1].trim();\n    // Ensure title is not longer than 60 characters\n    if (title.length > 60) {\n      title = title.substring(0, 57) + '...';\n    }\n  } else {\n    // Fallback: extract first line as title\n    const lines = openaiResponse.split('\\n').filter(line => line.trim());\n    title = lines[0] ? lines[0].trim().substring(0, 60) : 'Article généré par IA';\n  }\n  \n  if (contentMatch && contentMatch[1]) {\n    content = contentMatch[1].trim();\n  } else {\n    // Fallback: use entire response as content\n    content = openaiResponse.trim();\n  }\n  \n  // Clean up content\n  content = content.replace(/^TITRE:\\s*.+$/gim, '').trim();\n  \n  // Calculate stats\n  const wordCount = content.split(/\\s+/).filter(word => word.length > 0).length;\n  const characterCount = content.length;\n  \n  return {\n    success: true,\n    title: title,\n    content: content,\n    error: null,\n    timestamp: new Date().toISOString(),\n    wordCount: wordCount,\n    characterCount: characterCount\n  };\n  \n} catch (error) {\n  return {\n    success: false,\n    title: '',\n    content: '',\n    error: 'Erreur lors du traitement de la réponse IA: ' + error.message,\n    timestamp: new Date().toISOString()\n  };\n}"
+      },
+      "id": "ad63fc59-8h6g-7g88-cf0f-bdce3g4f5g6h",
+      "name": "Process Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Return error response for invalid input\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: 'Le prompt est requis et ne peut pas être vide',\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "be74gd6a-9i7h-8h99-dg1g-cedf4h5g6h7i",
+      "name": "Error - Invalid Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle OpenAI API errors\nconst error = $input.first().json.error || $input.first().json;\nlet errorMessage = 'Erreur lors de la génération de l\\'article';\n\nif (error.message) {\n  errorMessage = error.message;\n} else if (typeof error === 'string') {\n  errorMessage = error;\n}\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: errorMessage,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "cf85he7b-aj8i-9i0a-eh2h-dfeg5i6h7i8j",
+      "name": "Error - OpenAI Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}"
+      },
+      "id": "dg96if8c-bk9j-aj1b-fi3i-egfh6j7i8j9k",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Article",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error - Invalid Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Article": {
+      "main": [
+        [
+          {
+            "node": "Process Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error - OpenAI Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error - Invalid Input": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error - OpenAI Failed": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

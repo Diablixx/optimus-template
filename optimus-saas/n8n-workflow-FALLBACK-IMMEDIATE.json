@@ -1,0 +1,81 @@
+{
+  "name": "FALLBACK - Immediate Response (No OpenAI)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "webhookId": "ai-article-generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract prompt and generate immediate response\nconst inputData = $input.first();\nlet prompt = '';\n\n// Extract prompt from multiple possible locations\nif (inputData.json?.prompt) {\n  prompt = inputData.json.prompt;\n} else if (inputData.body?.prompt) {\n  prompt = inputData.body.prompt;\n} else if (inputData.json?.body?.prompt) {\n  prompt = inputData.json.body.prompt;\n} else if (inputData.query?.prompt) {\n  prompt = inputData.query.prompt;\n}\n\nconsole.log('Received prompt:', prompt);\n\n// Validate prompt\nif (!prompt || typeof prompt !== 'string' || !prompt.trim()) {\n  return {\n    success: false,\n    title: '',\n    content: '',\n    error: 'Le prompt est requis et ne peut pas être vide',\n    timestamp: new Date().toISOString(),\n    debug: {\n      receivedData: inputData,\n      extractedPrompt: prompt\n    }\n  };\n}\n\n// Generate article based on prompt theme\nconst cleanPrompt = prompt.trim();\nconst promptLower = cleanPrompt.toLowerCase();\n\nlet title = '';\nlet content = '';\n\n// Generate content based on prompt keywords\nif (promptLower.includes('marketing') || promptLower.includes('digital')) {\n  title = 'Marketing Digital : Guide Complet pour Réussir';\n  content = `# Marketing Digital : Guide Complet pour Réussir\\n\\nVotre sujet demandé : \"${cleanPrompt}\"\\n\\n## Introduction\\n\\nLe marketing digital est devenu incontournable dans le paysage commercial actuel. Cette stratégie englobe toutes les techniques de promotion utilisant les canaux numériques.\\n\\n## Les Piliers du Marketing Digital\\n\\n### 1. Référencement (SEO)\\nOptimisez votre visibilité sur les moteurs de recherche pour attirer un trafic qualifié et durable.\\n\\n### 2. Réseaux Sociaux\\nCréez une communauté engagée autour de votre marque sur les plateformes sociales pertinentes.\\n\\n### 3. Content Marketing\\nProduisez du contenu de valeur qui répond aux besoins de votre audience cible.\\n\\n### 4. Email Marketing\\nDéveloppez des campagnes personnalisées pour fidéliser vos clients.\\n\\n## Conseils Pratiques\\n\\n- Définissez clairement vos objectifs SMART\\n- Analysez régulièrement vos performances\\n- Adaptez votre stratégie selon les résultats\\n- Restez informé des dernières tendances\\n\\n## Conclusion\\n\\nLe succès en marketing digital repose sur une approche méthodique, une analyse continue et une adaptation constante aux évolutions du marché.`;\n} else if (promptLower.includes('business') || promptLower.includes('entreprise') || promptLower.includes('pme')) {\n  title = 'Stratégies Business : Clés de la Croissance';\n  content = `# Stratégies Business : Clés de la Croissance\\n\\nVotre sujet demandé : \"${cleanPrompt}\"\\n\\n## Introduction\\n\\nDans un environnement économique en constante évolution, les entreprises doivent adopter des stratégies innovantes pour prospérer.\\n\\n## Stratégies de Croissance\\n\\n### 1. Innovation Produit\\nDéveloppez des solutions qui répondent aux besoins non satisfaits du marché.\\n\\n### 2. Expansion de Marché\\nExplorez de nouveaux segments ou zones géographiques pour diversifier vos revenus.\\n\\n### 3. Partenariats Stratégiques\\nCollaborez avec d'autres entreprises pour créer de la valeur mutuelle.\\n\\n### 4. Transformation Digitale\\nIntégrez les technologies numériques dans tous les aspects de votre activité.\\n\\n## Conseils d'Implémentation\\n\\n- Effectuez une analyse SWOT approfondie\\n- Fixez des objectifs mesurables\\n- Investissez dans la formation de vos équipes\\n- Surveillez les indicateurs de performance\\n\\n## Conclusion\\n\\nLa réussite business nécessite une vision claire, une exécution rigoureuse et la capacité à s'adapter rapidement aux changements du marché.`;\n} else {\n  title = `Guide Pratique : ${cleanPrompt.charAt(0).toUpperCase() + cleanPrompt.slice(1)}`;\n  content = `# Guide Pratique : ${cleanPrompt.charAt(0).toUpperCase() + cleanPrompt.slice(1)}\\n\\nVotre sujet demandé : \"${cleanPrompt}\"\\n\\n## Introduction\\n\\nCe guide vous présente les aspects essentiels du sujet que vous avez choisi d'explorer.\\n\\n## Points Clés à Retenir\\n\\n### 1. Compréhension du Contexte\\nIl est crucial de bien cerner tous les enjeux liés à votre domaine d'intérêt.\\n\\n### 2. Mise en Pratique\\nL'application concrète des concepts théoriques est essentielle pour obtenir des résultats.\\n\\n### 3. Mesure des Résultats\\nÉtablissez des indicateurs pour évaluer l'efficacité de vos actions.\\n\\n## Conseils Pratiques\\n\\n- Commencez par les bases avant d'aborder les aspects avancés\\n- Documentez vos progrès et apprentissages\\n- Restez ouvert aux nouvelles approches\\n- Sollicitez les retours de votre entourage professionnel\\n\\n## Conclusion\\n\\nLa maîtrise de tout sujet demande du temps, de la patience et une approche méthodique. Continuez à apprendre et à vous perfectionner.`;\n}\n\n// Calculate metrics\nconst wordCount = content.split(/\\s+/).filter(word => word.length > 0).length;\nconst characterCount = content.length;\n\nreturn {\n  success: true,\n  title: title,\n  content: content,\n  error: null,\n  timestamp: new Date().toISOString(),\n  wordCount: wordCount,\n  characterCount: characterCount,\n  source: 'fallback_immediate',\n  note: 'Article généré instantanément par le système de fallback'\n};"
+      },
+      "id": "generate-immediate",
+      "name": "Generate Immediate Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "response-node",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Generate Immediate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Immediate Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

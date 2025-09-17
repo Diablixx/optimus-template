@@ -1,0 +1,265 @@
+{
+  "name": "AI AGENT SOLUTION - OpenAI + Memory",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "webhookId": "ai-article-generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and prepare prompt for AI Agent\nconst inputData = $input.first();\nlet prompt = '';\n\n// Extract prompt from multiple possible locations\nif (inputData.json?.prompt) {\n  prompt = inputData.json.prompt;\n} else if (inputData.body?.prompt) {\n  prompt = inputData.body.prompt;\n} else if (inputData.json?.body?.prompt) {\n  prompt = inputData.json.body.prompt;\n} else if (inputData.query?.prompt) {\n  prompt = inputData.query.prompt;\n}\n\nconsole.log('AI Agent - Received prompt:', prompt);\n\n// Validate prompt\nif (!prompt || typeof prompt !== 'string' || !prompt.trim()) {\n  return {\n    error: true,\n    message: 'Le prompt est requis et ne peut pas être vide'\n  };\n}\n\n// Prepare structured prompt for AI Agent\nconst structuredPrompt = `Tu es un expert en rédaction d'articles marketing en français. \n\nSujet demandé: \"${prompt.trim()}\"\n\nTâche: Écris un article complet et engageant sur ce sujet.\n\nL'article doit respecter ces critères:\n- Titre accrocheur (maximum 60 caractères)\n- Contenu entre 500 et 1000 mots\n- Structure avec sous-titres en markdown\n- Style professionnel mais accessible\n- Conseils pratiques inclus\n- Optimisation SEO\n\nFormat de réponse OBLIGATOIRE:\nTITRE: [Le titre de l'article]\nCONTENU: [Le contenu complet avec sous-titres en markdown]`;\n\nreturn {\n  prompt: structuredPrompt,\n  originalPrompt: prompt.trim(),\n  error: false\n};"
+      },
+      "id": "prepare-ai-prompt",
+      "name": "Prepare AI Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.error}}",
+              "value2": false
+            }
+          ]
+        }
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-3.5-turbo",
+        "messages": {
+          "messageType": "multipleMessages",
+          "messages": [
+            {
+              "content": "={{$json.prompt}}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000
+        },
+        "resource": "chat"
+      },
+      "id": "openai-agent",
+      "name": "OpenAI Agent",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [800, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "memory": "bufferMemory",
+        "sessionIdExpression": "article-generation-session",
+        "contextWindowLength": 4000
+      },
+      "id": "memory-buffer",
+      "name": "Memory Buffer",
+      "type": "n8n-nodes-base.memoryBufferWindow",
+      "typeVersion": 1,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process AI Agent response\ntry {\n  const aiResponse = $input.first();\n  console.log('AI Agent Response:', aiResponse);\n  \n  let content = '';\n  \n  // Extract content from different possible response formats\n  if (aiResponse.json?.message?.content) {\n    content = aiResponse.json.message.content;\n  } else if (aiResponse.json?.choices?.[0]?.message?.content) {\n    content = aiResponse.json.choices[0].message.content;\n  } else if (aiResponse.json?.content) {\n    content = aiResponse.json.content;\n  } else if (typeof aiResponse.json === 'string') {\n    content = aiResponse.json;\n  } else {\n    throw new Error('Format de réponse AI non reconnu');\n  }\n  \n  console.log('Extracted content length:', content.length);\n  \n  // Parse title and content\n  const titleMatch = content.match(/TITRE\\s*:\\s*(.+?)(?=\\n|CONTENU|$)/i);\n  const contentMatch = content.match(/CONTENU\\s*:\\s*([\\s\\S]+)/i);\n  \n  let title = '';\n  let articleContent = '';\n  \n  if (titleMatch && titleMatch[1]) {\n    title = titleMatch[1].trim();\n    if (title.length > 60) {\n      title = title.substring(0, 57) + '...';\n    }\n  } else {\n    // Fallback: extract first line as title\n    const lines = content.split('\\n').filter(line => line.trim());\n    title = lines[0] ? lines[0].trim().substring(0, 60) : 'Article généré par IA';\n  }\n  \n  if (contentMatch && contentMatch[1]) {\n    articleContent = contentMatch[1].trim();\n  } else {\n    // Fallback: use full content\n    articleContent = content.trim();\n  }\n  \n  // Clean up content\n  articleContent = articleContent.replace(/^TITRE\\s*:\\s*.+$/gim, '').trim();\n  \n  // Calculate metrics\n  const wordCount = articleContent.split(/\\s+/).filter(word => word.length > 0).length;\n  const characterCount = articleContent.length;\n  \n  return {\n    success: true,\n    title: title,\n    content: articleContent,\n    error: null,\n    timestamp: new Date().toISOString(),\n    wordCount: wordCount,\n    characterCount: characterCount,\n    source: 'openai_agent',\n    debug: {\n      aiResponseLength: content.length,\n      titleExtracted: !!titleMatch,\n      contentExtracted: !!contentMatch\n    }\n  };\n  \n} catch (error) {\n  console.error('AI Agent Processing Error:', error);\n  return {\n    success: false,\n    title: '',\n    content: '',\n    error: 'Erreur lors du traitement de la réponse AI: ' + error.message,\n    timestamp: new Date().toISOString(),\n    source: 'openai_agent_error',\n    debug: {\n      errorMessage: error.message,\n      inputData: $input.first()\n    }\n  };\n}"
+      },
+      "id": "process-ai-response",
+      "name": "Process AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle validation error\nconst inputData = $input.first();\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: inputData.message || 'Le prompt est requis et ne peut pas être vide',\n  timestamp: new Date().toISOString(),\n  source: 'validation_error'\n};"
+      },
+      "id": "validation-error",
+      "name": "Validation Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle AI Agent error with detailed logging\nconst inputData = $input.first();\nlet errorMessage = 'Erreur lors de la génération de l\\'article';\n\nconsole.log('AI Agent Error Details:', inputData);\n\n// Extract specific error information\nif (inputData.json?.error) {\n  const apiError = inputData.json.error;\n  errorMessage = apiError.message || apiError.type || apiError.code || 'Erreur API OpenAI';\n} else if (inputData.error) {\n  errorMessage = inputData.error.message || inputData.error;\n} else if (inputData.message) {\n  errorMessage = inputData.message;\n}\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: 'Erreur AI Agent: ' + errorMessage,\n  timestamp: new Date().toISOString(),\n  source: 'ai_agent_error',\n  debug: {\n    fullError: inputData,\n    errorType: typeof inputData.error,\n    hasJsonError: !!inputData.json?.error\n  }\n};"
+      },
+      "id": "ai-agent-error",
+      "name": "AI Agent Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, User-Agent"
+              }
+            ]
+          }
+        }
+      },
+      "id": "response-node",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Memory Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory Buffer": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Agent": {
+      "main": [
+        [
+          {
+            "node": "Process AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "AI Agent Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process AI Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Error": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

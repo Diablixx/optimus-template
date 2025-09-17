@@ -1,0 +1,248 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-cache"
+              }
+            ]
+          }
+        }
+      },
+      "id": "2dce29ad-8ec5-4936-bf9f-78d046c86655",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle OpenAI Chat API errors\nconst errorData = $input.first();\nlet errorMessage = 'Erreur OpenAI Chat';\n\nconsole.log('OpenAI Chat Error:', errorData);\n\n// Extract specific error details\nif (errorData.json?.error?.message) {\n  errorMessage = errorData.json.error.message;\n} else if (errorData.error?.message) {\n  errorMessage = errorData.error.message;\n} else if (errorData.message) {\n  errorMessage = errorData.message;\n} else if (typeof errorData.error === 'string') {\n  errorMessage = errorData.error;\n}\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: 'Erreur OpenAI: ' + errorMessage,\n  timestamp: new Date().toISOString(),\n  source: 'openai_chat_error',\n  debug: {\n    fullError: errorData,\n    errorType: typeof errorData.error,\n    statusCode: errorData.statusCode\n  }\n};"
+      },
+      "id": "6ccc9316-1f05-4210-a0df-dc4418c886af",
+      "name": "OpenAI Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        800,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle validation error\nconst inputData = $input.first();\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: inputData.message || 'Le prompt est requis et ne peut pas être vide',\n  timestamp: new Date().toISOString(),\n  source: 'validation_error'\n};"
+      },
+      "id": "2358481d-375c-4512-a030-8d7c40722a5f",
+      "name": "Validation Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        600,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ULTRAFIX: Process N8N OpenAI response with correct format handling\ntry {\n  const response = $input.first();\n  console.log('=== FULL N8N OPENAI RESPONSE ===');\n  console.log('Response object:', JSON.stringify(response, null, 2));\n  \n  let aiText = '';\n  \n  // N8N OpenAI node response extraction (multiple possible formats)\n  if (response.json?.output) {\n    // N8N OpenAI node sometimes uses 'output' field\n    aiText = response.json.output;\n  } else if (response.json?.text) {\n    // N8N OpenAI node sometimes uses 'text' field\n    aiText = response.json.text;\n  } else if (response.json?.choices?.[0]?.text) {\n    // Direct OpenAI API format\n    aiText = response.json.choices[0].text;\n  } else if (response.json?.choices?.[0]?.message?.content) {\n    // Chat completion format\n    aiText = response.json.choices[0].message.content;\n  } else if (response.text) {\n    // Direct text field\n    aiText = response.text;\n  } else if (response.output) {\n    // Direct output field\n    aiText = response.output;\n  } else if (typeof response.json === 'string') {\n    // Entire JSON is string\n    aiText = response.json;\n  } else {\n    console.error('=== UNKNOWN RESPONSE FORMAT ===');\n    console.error('Available keys:', Object.keys(response));\n    console.error('JSON keys:', response.json ? Object.keys(response.json) : 'No JSON');\n    \n    // Last resort: try to find any text-like content\n    const possibleTextFields = ['content', 'message', 'result', 'data'];\n    for (const field of possibleTextFields) {\n      if (response[field] && typeof response[field] === 'string') {\n        aiText = response[field];\n        console.log(`Found text in field: ${field}`);\n        break;\n      }\n      if (response.json?.[field] && typeof response.json[field] === 'string') {\n        aiText = response.json[field];\n        console.log(`Found text in json.${field}`);\n        break;\n      }\n    }\n    \n    if (!aiText) {\n      throw new Error('Aucun contenu textuel trouvé dans la réponse N8N');\n    }\n  }\n  \n  console.log('=== EXTRACTED AI TEXT ===');\n  console.log('Text length:', aiText ? aiText.length : 0);\n  console.log('First 200 chars:', aiText ? aiText.substring(0, 200) : 'EMPTY');\n  \n  if (!aiText || aiText.length < 10) {\n    throw new Error('Réponse OpenAI vide ou trop courte');\n  }\n  \n  // Try to parse as JSON first (since prompt asks for JSON)\n  let title = '';\n  let content = '';\n  \n  try {\n    // Attempt JSON parsing\n    const jsonResponse = JSON.parse(aiText);\n    console.log('=== PARSED JSON SUCCESSFULLY ===');\n    console.log('JSON object:', jsonResponse);\n    \n    if (jsonResponse.title && jsonResponse.content) {\n      title = jsonResponse.title;\n      content = jsonResponse.content;\n      console.log('Using JSON title/content fields');\n    } else {\n      throw new Error('JSON missing title/content fields');\n    }\n  } catch (jsonError) {\n    console.log('=== JSON PARSE FAILED, USING TEXT PARSING ===');\n    console.log('JSON Error:', jsonError.message);\n    \n    // Fallback to text parsing with multiple formats\n    // Try French format first\n    const titreFR = aiText.match(/TITRE\\s*:\\s*(.+?)(?=\\n|CONTENU|$)/i);\n    const contenuFR = aiText.match(/CONTENU\\s*:\\s*([\\s\\S]+)/i);\n    \n    // Try English format\n    const titleEN = aiText.match(/TITLE\\s*:\\s*(.+?)(?=\\n|CONTENT|$)/i);\n    const contentEN = aiText.match(/CONTENT\\s*:\\s*([\\s\\S]+)/i);\n    \n    if (titreFR && contenuFR) {\n      title = titreFR[1].trim();\n      content = contenuFR[1].trim();\n      console.log('Using French TITRE/CONTENU format');\n    } else if (titleEN && contentEN) {\n      title = titleEN[1].trim();\n      content = contentEN[1].trim();\n      console.log('Using English TITLE/CONTENT format');\n    } else {\n      // Ultimate fallback: treat entire text as content\n      const lines = aiText.split('\\n').filter(line => line.trim());\n      title = lines[0] ? lines[0].trim().substring(0, 60) : 'Article généré par IA';\n      content = aiText.trim();\n      console.log('Using fallback: first line as title, full text as content');\n    }\n  }\n  \n  // Clean up title length\n  if (title.length > 60) {\n    title = title.substring(0, 57) + '...';\n  }\n  \n  // Clean up content\n  content = content\n    .replace(/^(TITRE|TITLE)\\s*:\\s*.+$/gim, '')\n    .replace(/^(CONTENU|CONTENT)\\s*:\\s*/gim, '')\n    .trim();\n  \n  // Calculate metrics\n  const words = content.split(/\\s+/).filter(word => word.length > 0);\n  const wordCount = words.length;\n  const characterCount = content.length;\n  \n  console.log('=== FINAL RESULT ===');\n  console.log('Title:', title);\n  console.log('Content length:', characterCount);\n  console.log('Word count:', wordCount);\n  \n  // Quality check\n  if (wordCount < 20) {\n    throw new Error(`Article trop court: ${wordCount} mots (minimum 20)`);\n  }\n  \n  return {\n    success: true,\n    title: title,\n    content: content,\n    error: null,\n    timestamp: new Date().toISOString(),\n    wordCount: wordCount,\n    characterCount: characterCount,\n    source: 'n8n_openai_ultrafix',\n    debug: {\n      originalResponseType: typeof response,\n      hasJson: !!response.json,\n      textLength: aiText.length,\n      parsingMethod: content.includes('\\n\\n') ? 'structured' : 'fallback',\n      wordCount: wordCount\n    }\n  };\n  \n} catch (error) {\n  console.error('=== PROCESSING ERROR ===');\n  console.error('Error message:', error.message);\n  console.error('Error stack:', error.stack);\n  \n  return {\n    success: false,\n    title: '',\n    content: '',\n    error: 'Erreur de traitement: ' + error.message,\n    timestamp: new Date().toISOString(),\n    source: 'processing_error_ultrafix',\n    debug: {\n      errorMessage: error.message,\n      errorStack: error.stack,\n      inputReceived: !!$input.first(),\n      inputKeys: $input.first() ? Object.keys($input.first()) : []\n    }\n  };\n}"
+      },
+      "id": "ca8d784d-d03a-452f-9652-00525e726b45",
+      "name": "Process Chat Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "prompt": "=Tu es un expert en rédaction d'articles marketing en français.\n\nSujet: {{ $json.userPrompt }}\n\nÉcris un article complet et engageant sur ce sujet.\n\nL'article doit :\n- Avoir un titre accrocheur (maximum 60 caractères)\n- Contenir entre 500 et 1000 mots\n- Être structuré avec des sous-titres\n- Être écrit dans un style professionnel mais accessible\n- Inclure des conseils pratiques\n\nRéponds EXACTEMENT dans ce format :\n\nTITRE: [Le titre de l'article]\nCONTENU: [Le contenu complet de l'article avec sous-titres en markdown]",
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.7
+        },
+        "requestOptions": {}
+      },
+      "id": "5309fd10-8748-4363-9f6a-df656b7ff0cc",
+      "name": "OpenAI Chat",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        600,
+        -40
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "8YGpbQJJJxzWTFsi",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.error}}"
+            }
+          ]
+        }
+      },
+      "id": "7f9573ec-ca35-4e8c-96e9-82413ff7f26b",
+      "name": "Validate Prompt",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        400,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract prompt and prepare for Chat Agent\nconst inputData = $input.first();\nlet prompt = '';\n\n// Extract from all possible locations\nif (inputData.json?.prompt) {\n  prompt = inputData.json.prompt;\n} else if (inputData.body?.prompt) {\n  prompt = inputData.body.prompt;\n} else if (inputData.json?.body?.prompt) {\n  prompt = inputData.json.body.prompt;\n} else if (inputData.query?.prompt) {\n  prompt = inputData.query.prompt;\n}\n\nconsole.log('Chat Agent - Extracted prompt:', prompt);\n\nif (!prompt || typeof prompt !== 'string' || !prompt.trim()) {\n  return {\n    error: true,\n    message: 'Le prompt est requis et ne peut pas être vide'\n  };\n}\n\nreturn {\n  userPrompt: prompt.trim(),\n  error: false\n};"
+      },
+      "id": "31e3732d-996e-4520-8ec7-1847ead4b472",
+      "name": "Extract Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        200,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "73eb2560-f0b3-4f0b-8f07-df5b8c9f1961",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        60
+      ],
+      "webhookId": "ai-article-generation"
+    }
+  ],
+  "connections": {
+    "OpenAI Error": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Chat Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat": {
+      "main": [
+        [
+          {
+            "node": "Process Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "OpenAI Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Prompt": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Chat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Prompt": {
+      "main": [
+        [
+          {
+            "node": "Validate Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fbc39d4741073daceb575c6bc0bb1f58bf694a3db83148c2d5445cf013d2eabf"
+  }
+}

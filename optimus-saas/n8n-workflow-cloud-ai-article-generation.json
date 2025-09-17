@@ -1,0 +1,259 @@
+{
+  "name": "Cloud AI Article Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "4f5e6d7c-8b9a-1c2d-3e4f-567890abcdef",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "ai-article-generation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1a2b3d4-e5f6-7890-abcd-ef1234567890",
+              "leftValue": "={{ $json.prompt }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "create",
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Vous êtes un expert rédacteur français spécialisé dans la création d'articles de blog de haute qualité. Votre mission est de créer des articles informatifs, engageants et bien structurés en français.\n\nInstructions importantes :\n1. Créez un titre accrocheur de maximum 60 caractères\n2. Rédigez un contenu de 500 à 1000 mots\n3. Utilisez un ton professionnel mais accessible\n4. Structurez avec des sous-titres (##) et des paragraphes courts\n5. Incluez des exemples concrets quand c'est pertinent\n6. Optimisez pour le SEO avec des mots-clés naturels\n7. Terminez par une conclusion engageante\n\nFormat de réponse OBLIGATOIRE :\n```json\n{\n  \"title\": \"Votre titre ici (max 60 caractères)\",\n  \"content\": \"Votre contenu complet ici avec markdown\"\n}\n```"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000
+        }
+      },
+      "id": "b2c3d4e5-f6a7-8901-2345-678901bcdefg",
+      "name": "OpenAI Chat",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        680,
+        200
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse OpenAI response and format for output\ntry {\n  const openaiResponse = $input.first().json.choices[0].message.content;\n  \n  // Extract JSON from the response\n  const jsonMatch = openaiResponse.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n  let parsedContent;\n  \n  if (jsonMatch) {\n    parsedContent = JSON.parse(jsonMatch[1]);\n  } else {\n    // Fallback if no JSON format found\n    const lines = openaiResponse.split('\\n');\n    const title = lines[0].replace(/^#+\\s*/, '').trim();\n    const content = lines.slice(1).join('\\n').trim();\n    \n    parsedContent = {\n      title: title.substring(0, 60),\n      content: content\n    };\n  }\n  \n  // Validate and clean the response\n  const cleanTitle = (parsedContent.title || 'Article sans titre').substring(0, 60);\n  const cleanContent = parsedContent.content || 'Contenu non disponible.';\n  \n  return {\n    success: true,\n    title: cleanTitle,\n    content: cleanContent,\n    error: null,\n    timestamp: new Date().toISOString(),\n    wordCount: cleanContent.split(' ').length,\n    characterCount: cleanContent.length\n  };\n  \n} catch (error) {\n  console.error('Error processing OpenAI response:', error);\n  \n  return {\n    success: false,\n    title: '',\n    content: '',\n    error: `Erreur lors du traitement de la réponse IA: ${error.message}`,\n    timestamp: new Date().toISOString()\n  };\n}"
+      },
+      "id": "c3d4e5f6-a7b8-9012-3456-789012cdefgh",
+      "name": "Process AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle input validation error\nconst originalInput = $input.first().json;\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: 'Le paramètre \"prompt\" est requis et ne peut pas être vide.',\n  timestamp: new Date().toISOString(),\n  receivedInput: originalInput\n};"
+      },
+      "id": "d4e5f6a7-b8c9-0123-4567-890123defghi",
+      "name": "Error - Invalid Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle OpenAI API error\nconst error = $input.first().json.error || $input.first().json;\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: `Erreur lors de l'appel à l'API OpenAI: ${error.message || 'Erreur inconnue'}`,\n  timestamp: new Date().toISOString(),\n  apiError: error\n};"
+      },
+      "id": "e5f6a7b8-c9d0-1234-5678-901234efghij",
+      "name": "Error - OpenAI API",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "f6a7b8c9-d0e1-2345-6789-012345fghijk",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Chat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error - Invalid Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat": {
+      "main": [
+        [
+          {
+            "node": "Process AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Error - OpenAI API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process AI Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error - Invalid Input": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error - OpenAI API": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cloud-instance"
+  },
+  "id": "cloud-ai-article-generation",
+  "tags": [
+    {
+      "createdAt": "2024-09-15T00:00:00.000Z",
+      "updatedAt": "2024-09-15T00:00:00.000Z",
+      "id": "ai-content",
+      "name": "AI Content Generation"
+    },
+    {
+      "createdAt": "2024-09-15T00:00:00.000Z",
+      "updatedAt": "2024-09-15T00:00:00.000Z",
+      "id": "production",
+      "name": "Production Ready"
+    }
+  ]
+}
