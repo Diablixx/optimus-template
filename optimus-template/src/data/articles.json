@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1758025744063,
+    "title": "\"5 conseils pour bien choisir sa voiture\"",
+    "slug": "5-conseils-pour-bien-choisir-sa-voiture",
+    "excerpt": "# Introduction\n\nL'achat d'une voiture est une étape importante dans la vie de nombreuses personnes. Que ce soit pour un premier véhicule ou pour remplacer un modèle vieillissant, il est essentiel de b...",
+    "author": "Optimus SaaS",
+    "date": "16 septembre 2025",
+    "category": "Marketing",
+    "readTime": "3 min"
+  },
+  {
+    "id": 1758012814717,
+    "title": "Le commerce : un secteur en constante évolution",
+    "slug": "le-commerce-un-secteur-en-constante-evolution",
+    "excerpt": "# Introduction\nLe commerce est un secteur clé de l'économie mondiale. Depuis des millénaires, les humains ont échangé des biens et des services pour répondre à leurs besoins. Aujourd'hui, le commerce ...",
+    "author": "Optimus SaaS",
+    "date": "16 septembre 2025",
+    "category": "Marketing",
+    "readTime": "4 min"
+  },
+  {
+    "id": 1758010834816,
+    "title": "\"Le tennis, un sport passionnant pour tous les âges\"",
+    "slug": "le-tennis-un-sport-passionnant-pour-tous-les-ages",
+    "excerpt": "# Introduction\nLe tennis est un sport qui suscite l'engouement de millions de personnes à travers le monde. Que ce soit en tant que spectateur ou en tant que joueur, le tennis offre de nombreux avanta...",
+    "author": "Optimus SaaS",
+    "date": "16 septembre 2025",
+    "category": "Marketing",
+    "readTime": "3 min"
+  },
+  {
+    "id": 1757962869627,
+    "title": "Test API Article",
+    "slug": "test-api-article",
+    "excerpt": "This is a test article created via the API to verify the new routing structure works correctly....",
+    "author": "Test Author",
+    "date": "15 septembre 2025",
+    "category": "Test",
+    "readTime": "1 min"
+  },
+  {
+    "id": 1757848457838,
+    "title": "bonjour",
+    "slug": "bonjour",
+    "excerpt": "test...",
+    "author": "Optimus SaaS",
+    "date": "14 septembre 2025",
+    "category": "Marketing",
+    "readTime": "1 min"
+  },
+  {
+    "id": 1757847150286,
+    "title": "Test de la mise en page",
+    "slug": "test-de-la-mise-en-page",
+    "excerpt": "Ceci est un test de la mise en page...",
+    "author": "Optimus SaaS",
+    "date": "14 septembre 2025",
+    "category": "Marketing",
+    "readTime": "1 min"
+  },
+  {
+    "id": 1,
+    "title": "Les 10 Techniques SEO Qui Fonctionnent en 2024",
+    "slug": "les-10-techniques-seo-qui-fonctionnent-en-2024",
+    "excerpt": "Découvrez les stratégies de référencement naturel les plus efficaces pour dominer Google cette année et améliorer significativement votre visibilité en ligne...",
+    "author": "Marie Dubois",
+    "date": "15 Mars 2024",
+    "category": "SEO",
+    "readTime": "8 min"
+  },
+  {
+    "id": 2,
+    "title": "Comment Créer un Tunnel de Vente Qui Convertit",
+    "slug": "comment-creer-un-tunnel-de-vente-qui-convertit",
+    "excerpt": "Guide étape par étape pour construire un funnel marketing qui transforme vos visiteurs en clients fidèles et maximise votre taux de conversion...",
+    "author": "Thomas Martin",
+    "date": "12 Mars 2024",
+    "category": "Marketing",
+    "readTime": "12 min"
+  },
+  {
+    "id": 3,
+    "title": "E-commerce : Optimiser Ses Fiches Produits",
+    "slug": "e-commerce-optimiser-ses-fiches-produits",
+    "excerpt": "Les secrets pour rédiger des descriptions produits qui vendent et améliorent votre SEO. Techniques éprouvées pour booster vos conversions...",
+    "author": "Sophie Laurent",
+    "date": "10 Mars 2024",
+    "category": "E-commerce",
+    "readTime": "10 min"
+  },
+  {
+    "id": 4,
+    "title": "Social Media Marketing : Stratégie 2024",
+    "slug": "social-media-marketing-strategie-2024",
+    "excerpt": "Comment développer votre présence sur les réseaux sociaux et engager votre communauté avec les dernières tendances et stratégies...",
+    "author": "Alexandre Ricci",
+    "date": "8 Mars 2024",
+    "category": "Social Media",
+    "readTime": "6 min"
+  },
+  {
+    "id": 5,
+    "title": "Google Analytics 4 : Guide Complet",
+    "slug": "google-analytics-4-guide-complet",
+    "excerpt": "Maîtrisez GA4 pour tracker et analyser efficacement les performances de votre site web. Guide pratique avec exemples concrets...",
+    "author": "Julie Moreau",
+    "date": "5 Mars 2024",
+    "category": "Analytics",
+    "readTime": "15 min"
+  },
+  {
+    "id": 6,
+    "title": "Content Marketing : Créer du Contenu Viral",
+    "slug": "content-marketing-creer-du-contenu-viral",
+    "excerpt": "Les techniques pour produire du contenu qui captive votre audience et génère de l'engagement maximum sur toutes les plateformes...",
+    "author": "David Chen",
+    "date": "3 Mars 2024",
+    "category": "Content",
+    "readTime": "9 min"
+  }
+]

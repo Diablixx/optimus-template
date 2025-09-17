@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "title": "Optimisation SEO : Les Clés du Succès Digital",
+    "slug": "optimisation-seo-cles-succes-digital",
+    "content": "Dans l'univers numérique d'aujourd'hui, l'optimisation pour les moteurs de recherche (SEO) représente un pilier fondamental pour toute stratégie digitale réussie. Découvrez les techniques essentielles pour propulser votre site web vers les premiers résultats de recherche.",
+    "excerpt": "Maîtrisez les techniques SEO essentielles pour améliorer votre visibilité en ligne et attirer plus de visiteurs qualifiés sur votre site web.",
+    "date": "2024-01-15T10:00:00Z",
+    "category": "SEO",
+    "author": "Expert Digital",
+    "featured_image": "/images/blog/seo-optimization.jpg",
+    "tags": ["SEO", "Marketing Digital", "Visibilité"]
+  },
+  {
+    "id": 2,
+    "title": "Marketing de Contenu : Créer une Stratégie Gagnante",
+    "slug": "marketing-contenu-strategie-gagnante",
+    "content": "Le marketing de contenu constitue l'épine dorsale de toute communication digitale efficace. Apprenez à développer une stratégie de contenu qui captive votre audience et génère des résultats mesurables.",
+    "excerpt": "Développez une stratégie de contenu performante qui engage votre audience et transforme vos visiteurs en clients fidèles.",
+    "date": "2024-01-10T14:30:00Z",
+    "category": "Marketing",
+    "author": "Expert Digital",
+    "featured_image": "/images/blog/content-marketing.jpg",
+    "tags": ["Content Marketing", "Stratégie", "Engagement"]
+  },
+  {
+    "id": 3,
+    "title": "E-commerce : Augmenter vos Conversions",
+    "slug": "ecommerce-augmenter-conversions",
+    "content": "Transformez vos visiteurs en clients grâce aux meilleures pratiques d'optimisation de conversion. Découvrez les techniques prouvées pour maximiser vos ventes en ligne.",
+    "excerpt": "Optimisez votre boutique en ligne avec des techniques éprouvées pour augmenter significativement vos taux de conversion.",
+    "date": "2024-01-05T09:15:00Z",
+    "category": "E-commerce",
+    "author": "Expert Digital",
+    "featured_image": "/images/blog/ecommerce-conversion.jpg",
+    "tags": ["E-commerce", "Conversion", "Ventes"]
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "Qui sommes-nous",
+    "slug": "qui-sommes-nous",
+    "content": "Nous sommes une équipe passionnée d'experts en marketing digital, dédiée à accompagner les entreprises dans leur transformation numérique. Notre mission est de vous aider à développer votre présence en ligne et à atteindre vos objectifs commerciaux grâce à des stratégies personnalisées et innovantes.",
+    "template": "page"
+  },
+  {
+    "id": 2,
+    "title": "Mentions légales",
+    "slug": "mentions-legales",
+    "content": "Conformément aux dispositions des articles 6-III et 19 de la Loi n°2004-575 du 21 juin 2004 pour la Confiance dans l'économie numérique, nous vous informons que le présent site est édité par [Nom de l'entreprise].",
+    "template": "page"
+  }
+]

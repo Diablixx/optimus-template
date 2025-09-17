@@ -1,0 +1,77 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "debug-response",
+      "name": "Debug Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// DEBUG: Complete webhook data analysis\nconst inputData = $input.first();\n\nconsole.log('=== COMPLETE N8N WEBHOOK DEBUG ===');\nconsole.log('Raw input type:', typeof inputData);\nconsole.log('Raw input keys:', Object.keys(inputData));\nconsole.log('Full input object:', JSON.stringify(inputData, null, 2));\n\n// Check all possible data locations\nconst locations = {\n  'inputData.json': inputData.json,\n  'inputData.body': inputData.body,\n  'inputData.query': inputData.query,\n  'inputData.headers': inputData.headers,\n  'inputData.params': inputData.params\n};\n\nconsole.log('=== DATA LOCATIONS ===');\nfor (const [location, value] of Object.entries(locations)) {\n  console.log(`${location}:`, value);\n  console.log(`${location} type:`, typeof value);\n}\n\n// Check specific prompt/keyword extraction\nlet extractedKeyword = '';\nconst extractionMethods = [\n  { method: 'inputData.json?.prompt', value: inputData.json?.prompt },\n  { method: 'inputData.json?.keyword', value: inputData.json?.keyword },\n  { method: 'inputData.body?.prompt', value: inputData.body?.prompt },\n  { method: 'inputData.body?.keyword', value: inputData.body?.keyword },\n  { method: 'inputData.query?.prompt', value: inputData.query?.prompt },\n  { method: 'inputData.query?.keyword', value: inputData.query?.keyword },\n  { method: 'inputData.prompt', value: inputData.prompt },\n  { method: 'inputData.keyword', value: inputData.keyword }\n];\n\nconsole.log('=== EXTRACTION TEST ===');\nextractionMethods.forEach(test => {\n  console.log(`${test.method}: ${JSON.stringify(test.value)} (type: ${typeof test.value})`);\n  if (test.value && typeof test.value === 'string' && test.value.trim()) {\n    extractedKeyword = test.value.trim();\n    console.log(`✓ FOUND KEYWORD VIA: ${test.method}`);\n  }\n});\n\n// Return comprehensive debug info\nreturn {\n  success: true,\n  extractedKeyword: extractedKeyword,\n  keywordFound: !!extractedKeyword,\n  debugInfo: {\n    inputType: typeof inputData,\n    inputKeys: Object.keys(inputData),\n    fullInput: inputData,\n    dataLocations: locations,\n    extractionTests: extractionMethods,\n    timestamp: new Date().toISOString()\n  },\n  message: extractedKeyword ? \n    `Keyword successfully extracted: \"${extractedKeyword}\"` : \n    'No valid keyword found in any location'\n};"
+      },
+      "id": "debug-analysis",
+      "name": "Debug Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "debug-webhook-test",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "debug-webhook",
+      "name": "Debug Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "webhookId": "debug-webhook-test"
+    }
+  ],
+  "connections": {
+    "Debug Analysis": {
+      "main": [
+        [
+          {
+            "node": "Debug Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Webhook": {
+      "main": [
+        [
+          {
+            "node": "Debug Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

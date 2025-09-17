@@ -1,0 +1,137 @@
+{
+  "name": "AI Article Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8c5d91b5-8d5f-4c5e-8b5e-5f5e5f5e5f5e",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "c5d91b5d-8d5f-4c5e-8b5e-5f5e5f5e5f5e"
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "message",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a professional article writer. Generate high-quality, engaging articles based on user prompts. Always respond with a JSON object containing 'title' and 'content' fields. The content should be comprehensive, well-structured with proper paragraphs, and between 800-1500 words."
+            },
+            {
+              "role": "user",
+              "content": "={{$json.prompt}}\n\nPlease generate an article with the following JSON structure:\n{\n  \"title\": \"Your generated title here\",\n  \"content\": \"Your comprehensive article content here with proper paragraphs and formatting\"\n}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 4000
+        }
+      },
+      "id": "7b4e92c6-9d6f-5d6e-9c6e-6f6e6f6e6f6e",
+      "name": "OpenAI",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credential-id",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process OpenAI response and format for webhook return\ntry {\n  const openAiResponse = $input.first().json;\n  \n  // Check if we have a valid OpenAI response\n  if (openAiResponse.choices && openAiResponse.choices[0] && openAiResponse.choices[0].message) {\n    const aiContent = openAiResponse.choices[0].message.content;\n    \n    // Try to parse the AI response as JSON\n    try {\n      const parsedContent = JSON.parse(aiContent);\n      \n      return [{\n        json: {\n          success: true,\n          title: parsedContent.title || \"Generated Article\",\n          content: parsedContent.content || aiContent,\n          error: null,\n          timestamp: new Date().toISOString()\n        }\n      }];\n    } catch (parseError) {\n      // If parsing fails, treat the entire response as content\n      const lines = aiContent.split('\\n');\n      const title = lines[0] || \"Generated Article\";\n      const content = aiContent;\n      \n      return [{\n        json: {\n          success: true,\n          title: title,\n          content: content,\n          error: null,\n          timestamp: new Date().toISOString()\n        }\n      }];\n    }\n  } else {\n    throw new Error('Invalid OpenAI response format');\n  }\n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      title: null,\n      content: null,\n      error: `Error processing AI response: ${error.message}`,\n      timestamp: new Date().toISOString()\n    }\n  }];\n}"
+      },
+      "id": "6a3d81a4-8c4e-4b4d-8a4d-4e4d4e4d4e4d",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}"
+      },
+      "id": "5f2c70f3-7b3c-3a3c-7f3c-3c3c3c3c3c3c",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        880,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "tag-ai-generation",
+      "name": "AI Generation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "workflow-version-1"
+}

@@ -1,0 +1,67 @@
+{
+  "name": "Debug Webhook Data",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-debug",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "ai-article-generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Debug: Show all received data\nconst receivedData = $input.first();\n\nreturn {\n  success: true,\n  debug: {\n    fullInput: receivedData,\n    json: receivedData.json,\n    headers: receivedData.headers,\n    query: receivedData.query,\n    body: receivedData.body,\n    prompt: receivedData.json?.prompt,\n    promptType: typeof receivedData.json?.prompt,\n    promptLength: receivedData.json?.prompt?.length || 0\n  },\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "debug-code",
+      "name": "Debug Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}"
+      },
+      "id": "response-debug",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Debug Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Data": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

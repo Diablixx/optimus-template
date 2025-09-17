@@ -1,0 +1,145 @@
+{
+  "name": "DEBUG - Ultimate N8N Fix",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "cd6fd0ee-2e7a-4631-941f-a0c7d22cbb9f",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [-140, 60],
+      "webhookId": "ai-article-generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// DEBUG: Log all incoming data\nconst inputData = $input.first();\n\nconsole.log('=== INCOMING WEBHOOK DATA ===');\nconsole.log('Full input:', JSON.stringify(inputData, null, 2));\nconsole.log('JSON data:', inputData.json);\nconsole.log('Body data:', inputData.body);\nconsole.log('Query data:', inputData.query);\nconsole.log('Headers:', inputData.headers);\n\n// Check prompt specifically\nconst prompt = inputData.json?.prompt;\nconsole.log('Prompt value:', prompt);\nconsole.log('Prompt type:', typeof prompt);\nconsole.log('Prompt length:', prompt?.length);\nconsole.log('Is prompt empty?', !prompt || !prompt.trim());\n\n// Return data for next node\nreturn inputData;"
+      },
+      "id": "debug-input",
+      "name": "Debug Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [80, 60]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.prompt}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "bed5d546-42af-431c-953b-1a345a719c9a",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [300, 60]
+    },
+    {
+      "parameters": {
+        "jsCode": "// SUCCESS: Prompt is valid\nconst prompt = $json.prompt;\n\nreturn {\n  success: true,\n  title: 'Test Article Title',\n  content: `# Article généré avec succès\\n\\nVotre prompt était: \"${prompt}\"\\n\\nCeci est un test pour vérifier que N8N fonctionne correctement.`,\n  error: null,\n  timestamp: new Date().toISOString(),\n  wordCount: 15,\n  characterCount: 150,\n  debug: {\n    receivedPrompt: prompt,\n    promptLength: prompt.length,\n    promptType: typeof prompt\n  }\n};"
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [520, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ERROR: Invalid input debug\nconst inputData = $input.first();\n\nconsole.log('=== VALIDATION FAILED ===');\nconsole.log('Input data:', JSON.stringify(inputData, null, 2));\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: 'Le prompt est requis et ne peut pas être vide',\n  timestamp: new Date().toISOString(),\n  debug: {\n    fullInput: inputData,\n    jsonData: inputData.json,\n    prompt: inputData.json?.prompt,\n    promptType: typeof inputData.json?.prompt,\n    promptValue: JSON.stringify(inputData.json?.prompt)\n  }\n};"
+      },
+      "id": "4331aee9-232b-4b9d-9115-f49d709a9ee1",
+      "name": "Error - Invalid Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [520, 160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "1d7052aa-cb27-42be-8446-46a71734f291",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [740, 60]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Debug Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Input": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error - Invalid Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error - Invalid Input": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

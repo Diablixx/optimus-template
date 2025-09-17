@@ -1,0 +1,305 @@
+{
+  "name": "AI AGENT ULTIMATE - With Tools & Memory",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "webhookId": "ai-article-generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and prepare prompt for AI Agent\nconst inputData = $input.first();\nlet prompt = '';\n\n// Extract from all possible locations\nif (inputData.json?.prompt) {\n  prompt = inputData.json.prompt;\n} else if (inputData.body?.prompt) {\n  prompt = inputData.body.prompt;\n} else if (inputData.json?.body?.prompt) {\n  prompt = inputData.json.body.prompt;\n} else if (inputData.query?.prompt) {\n  prompt = inputData.query.prompt;\n}\n\nconsole.log('AI Agent - Extracted prompt:', prompt);\n\nif (!prompt || typeof prompt !== 'string' || !prompt.trim()) {\n  return {\n    error: true,\n    message: 'Le prompt est requis et ne peut pas être vide'\n  };\n}\n\nreturn {\n  userMessage: prompt.trim(),\n  error: false\n};"
+      },
+      "id": "extract-prompt",
+      "name": "Extract Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.error}}",
+              "value2": false
+            }
+          ]
+        }
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "model": {
+          "model": "gpt-3.5-turbo",
+          "type": "openai"
+        },
+        "text": "={{$json.userMessage}}",
+        "systemMessage": "Tu es un expert en rédaction d'articles marketing en français. Tu écris des articles complets, engageants et optimisés SEO.\n\nQuand on te demande d'écrire un article, tu dois TOUJOURS répondre dans ce format exact:\n\nTITRE: [Un titre accrocheur de maximum 60 caractères]\nCONTENU: [Le contenu complet de l'article avec des sous-titres en markdown, entre 500 et 1000 mots, style professionnel mais accessible, avec des conseils pratiques]\n\nTu dois absolument respecter ce format pour que le système puisse traiter ta réponse correctement.",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000
+        },
+        "tools": {
+          "tool": [
+            {
+              "name": "article_writer",
+              "description": "Outil pour écrire des articles marketing en français",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "description": "Le sujet de l'article à écrire"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Le titre de l'article (max 60 caractères)"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Le contenu complet de l'article avec sous-titres markdown"
+                  }
+                },
+                "required": ["topic", "title", "content"]
+              }
+            },
+            {
+              "name": "content_optimizer",
+              "description": "Outil pour optimiser le contenu SEO",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "Le contenu à optimiser"
+                  },
+                  "keywords": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Les mots-clés pour l'optimisation SEO"
+                  }
+                },
+                "required": ["content"]
+              }
+            },
+            {
+              "name": "text_formatter",
+              "description": "Outil pour formater le texte en markdown",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "Le texte à formater"
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": ["markdown", "html", "plain"],
+                    "description": "Le format souhaité"
+                  }
+                },
+                "required": ["text", "format"]
+              }
+            }
+          ]
+        },
+        "memory": {
+          "type": "bufferMemory",
+          "sessionKey": "article-generation",
+          "maxTokens": 2000
+        }
+      },
+      "id": "ai-agent",
+      "name": "AI Agent",
+      "type": "n8n-nodes-base.aiAgent",
+      "typeVersion": 1,
+      "position": [800, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process AI Agent response with enhanced parsing\ntry {\n  const agentResponse = $input.first();\n  console.log('AI Agent Response:', agentResponse);\n  \n  let responseText = '';\n  \n  // Extract text from AI Agent response\n  if (agentResponse.json?.output) {\n    responseText = agentResponse.json.output;\n  } else if (agentResponse.json?.text) {\n    responseText = agentResponse.json.text;\n  } else if (agentResponse.json?.response) {\n    responseText = agentResponse.json.response;\n  } else if (agentResponse.json?.message) {\n    responseText = agentResponse.json.message;\n  } else if (agentResponse.text) {\n    responseText = agentResponse.text;\n  } else if (typeof agentResponse.json === 'string') {\n    responseText = agentResponse.json;\n  } else {\n    console.error('Unknown AI Agent response format:', agentResponse);\n    throw new Error('Format de réponse AI Agent non reconnu');\n  }\n  \n  console.log('Extracted response text length:', responseText.length);\n  \n  if (!responseText || responseText.length < 20) {\n    throw new Error('Réponse AI Agent vide ou trop courte');\n  }\n  \n  // Enhanced parsing for TITRE and CONTENU\n  const titleRegex = /TITRE\\s*:\\s*(.+?)(?=\\n|CONTENU|$)/is;\n  const contentRegex = /CONTENU\\s*:\\s*([\\s\\S]+?)(?=\\n\\n|$)/is;\n  \n  const titleMatch = responseText.match(titleRegex);\n  const contentMatch = responseText.match(contentRegex);\n  \n  let title = '';\n  let content = '';\n  \n  if (titleMatch && titleMatch[1]) {\n    title = titleMatch[1].trim();\n    // Ensure title length limit\n    if (title.length > 60) {\n      title = title.substring(0, 57) + '...';\n    }\n  } else {\n    // Fallback: extract first meaningful line\n    const lines = responseText.split('\\n').filter(line => \n      line.trim() && \n      !line.match(/^(TITRE|CONTENU)\\s*:/i) &&\n      line.length > 10\n    );\n    title = lines[0] ? lines[0].trim().substring(0, 60) : 'Article Généré par IA';\n  }\n  \n  if (contentMatch && contentMatch[1]) {\n    content = contentMatch[1].trim();\n  } else {\n    // Fallback: clean entire response\n    content = responseText\n      .replace(/^TITRE\\s*:\\s*.+$/gim, '')\n      .replace(/^CONTENU\\s*:\\s*/gim, '')\n      .trim();\n  }\n  \n  // Ensure minimum content quality\n  if (content.length < 100) {\n    throw new Error('Contenu généré trop court (moins de 100 caractères)');\n  }\n  \n  // Calculate metrics\n  const words = content.split(/\\s+/).filter(word => word.length > 0);\n  const wordCount = words.length;\n  const characterCount = content.length;\n  \n  // Quality check\n  if (wordCount < 50) {\n    throw new Error('Article trop court (moins de 50 mots)');\n  }\n  \n  return {\n    success: true,\n    title: title,\n    content: content,\n    error: null,\n    timestamp: new Date().toISOString(),\n    wordCount: wordCount,\n    characterCount: characterCount,\n    source: 'ai_agent_tools',\n    debug: {\n      originalResponseLength: responseText.length,\n      titleFound: !!titleMatch,\n      contentFound: !!contentMatch,\n      qualityCheck: {\n        wordCount: wordCount,\n        characterCount: characterCount,\n        hasMarkdown: content.includes('#'),\n        hasStructure: content.includes('##')\n      }\n    }\n  };\n  \n} catch (error) {\n  console.error('AI Agent Processing Error:', error);\n  return {\n    success: false,\n    title: '',\n    content: '',\n    error: 'Erreur de traitement AI Agent: ' + error.message,\n    timestamp: new Date().toISOString(),\n    source: 'ai_agent_error',\n    debug: {\n      errorMessage: error.message,\n      errorStack: error.stack,\n      inputData: $input.first()\n    }\n  };\n}"
+      },
+      "id": "process-agent-response",
+      "name": "Process Agent Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle validation error\nconst inputData = $input.first();\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: inputData.message || 'Le prompt est requis et ne peut pas être vide',\n  timestamp: new Date().toISOString(),\n  source: 'validation_error'\n};"
+      },
+      "id": "validation-error",
+      "name": "Validation Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle AI Agent errors with detailed logging\nconst errorData = $input.first();\nlet errorMessage = 'Erreur AI Agent';\n\nconsole.log('AI Agent Error Details:', errorData);\n\n// Extract detailed error information\nif (errorData.json?.error?.message) {\n  errorMessage = errorData.json.error.message;\n} else if (errorData.error?.message) {\n  errorMessage = errorData.error.message;\n} else if (errorData.message) {\n  errorMessage = errorData.message;\n} else if (typeof errorData.error === 'string') {\n  errorMessage = errorData.error;\n} else if (errorData.json?.error) {\n  errorMessage = JSON.stringify(errorData.json.error);\n}\n\nreturn {\n  success: false,\n  title: '',\n  content: '',\n  error: 'Erreur AI Agent: ' + errorMessage,\n  timestamp: new Date().toISOString(),\n  source: 'ai_agent_error',\n  debug: {\n    fullError: errorData,\n    errorType: typeof errorData.error,\n    statusCode: errorData.statusCode,\n    hasJsonError: !!errorData.json?.error\n  }\n};"
+      },
+      "id": "ai-agent-error",
+      "name": "AI Agent Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, User-Agent"
+              }
+            ]
+          }
+        }
+      },
+      "id": "response-node",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Prompt": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Process Agent Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "AI Agent Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Agent Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Error": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}

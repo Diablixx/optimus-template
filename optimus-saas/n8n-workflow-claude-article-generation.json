@@ -1,0 +1,139 @@
+{
+  "name": "Claude Article Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8c5d91b5-8d5f-4c5e-8b5e-5f5e5f5e5f5e",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "c5d91b5d-8d5f-4c5e-8b5e-5f5e5f5e5f5e"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-sonnet-20241022\",\n  \"max_tokens\": 4000,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Generate a professional article based on this prompt: {{$json.prompt}}\\n\\nReturn only a JSON object with this structure:\\n{\\n  \\\"title\\\": \\\"Your generated title\\\",\\n  \\\"content\\\": \\\"Your comprehensive article content with proper paragraphs\\\"\\n}\\n\\nMake the content 800-1500 words, well-structured and engaging.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "7b4e92c6-9d6f-5d6e-9c6e-6f6e6f6e6f6e",
+      "name": "Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        440,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "claude-api-key",
+          "name": "Claude API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process Claude response and format for webhook return\ntry {\n  const claudeResponse = $input.first().json;\n  \n  // Check if we have a valid Claude response\n  if (claudeResponse.content && claudeResponse.content[0] && claudeResponse.content[0].text) {\n    const aiContent = claudeResponse.content[0].text;\n    \n    // Try to parse the AI response as JSON\n    try {\n      const parsedContent = JSON.parse(aiContent);\n      \n      return [{\n        json: {\n          success: true,\n          title: parsedContent.title || \"Generated Article\",\n          content: parsedContent.content || aiContent,\n          error: null,\n          timestamp: new Date().toISOString()\n        }\n      }];\n    } catch (parseError) {\n      // If parsing fails, treat the entire response as content\n      const lines = aiContent.split('\\n');\n      const title = lines[0] || \"Generated Article\";\n      const content = aiContent;\n      \n      return [{\n        json: {\n          success: true,\n          title: title,\n          content: content,\n          error: null,\n          timestamp: new Date().toISOString()\n        }\n      }];\n    }\n  } else {\n    throw new Error('Invalid Claude response format');\n  }\n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      title: null,\n      content: null,\n      error: `Error processing AI response: ${error.message}`,\n      timestamp: new Date().toISOString()\n    }\n  }];\n}"
+      },
+      "id": "6a3d81a4-8c4e-4b4d-8a4d-4e4d4e4d4e4d",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}"
+      },
+      "id": "5f2c70f3-7b3c-3a3c-7f3c-3c3c3c3c3c3c",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        880,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude API": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "tag-ai-generation",
+      "name": "AI Generation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "workflow-version-1"
+}

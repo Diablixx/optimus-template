@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/yakeen/**)",
+      "Bash(echo $SHELL)",
+      "Bash(source:*)",
+      "Bash(echo $PATH)",
+      "Bash(ln:*)",
+      "Bash(claude --version)",
+      "Bash(node:*)",
+      "Bash(code .)",
+      "Bash(brew:*)",
+      "Bash(curl:*)",
+      "Bash(mkdir:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(cat:*)",
+      "Bash(xxd:*)",
+      "Bash(export:*)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(xargs kill:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(grep:*)",
+      "Bash(/dev/null)",
+      "*",
+      "Bash(npx tsx:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=\"https://ucvxfjoongglzikjlxde.supabase.co\" NEXT_PUBLIC_SUPABASE_ANON_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjdnhmam9vbmdnbHppa2pseGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxNDY4OTksImV4cCI6MjA2NTcyMjg5OX0.q_xtNL2LIvOXbMH8atFM5bdez4GpwvYcsI-zjRF71OY\" npx tsx test-db-connection.ts)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=\"https://ucvxfjoongglzikjlxde.supabase.co\" NEXT_PUBLIC_SUPABASE_ANON_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjdnhmam9vbmdnbHppa2pseGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxNDY4OTksImV4cCI6MjA2NTcyMjg5OX0.q_xtNL2LIvOXbMH8atFM5bdez4GpwvYcsI-zjRF71OY\" npx tsx test-keyword-addition.ts)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(rm:*)",
+      "Bash(pkill:*)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

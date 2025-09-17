@@ -1,0 +1,408 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": true, \"message\": \"Article généré et sauvegardé avec succès\", \"keyword\": \"{{ $('Extract Keyword').item.json.userKeyword }}\", \"timestamp\": \"{{ new Date().toISOString() }}\"}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-cache"
+              }
+            ]
+          }
+        }
+      },
+      "id": "86174667-a822-4795-a9c8-2de53ded165b",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "error-response-node",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "articles",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('Process Chat Response').item.json.title }}"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $('Process Chat Response').item.json.content }}"
+            },
+            {
+              "fieldId": "slug",
+              "fieldValue": "={{ $('Generate Metadata').item.json.slug }}"
+            },
+            {
+              "fieldId": "keyword",
+              "fieldValue": "={{ $('Extract Keyword').item.json.userKeyword }}"
+            },
+            {
+              "fieldId": "excerpt",
+              "fieldValue": "={{ $('Generate Metadata').item.json.excerpt }}"
+            },
+            {
+              "fieldId": "read_time",
+              "fieldValue": "={{ $('Generate Metadata').item.json.readTime }}"
+            },
+            {
+              "fieldId": "published",
+              "fieldValue": false
+            },
+            {
+              "fieldId": "meta_description",
+              "fieldValue": "={{ $('Generate Metadata').item.json.excerpt }}"
+            },
+            {
+              "fieldId": "author",
+              "fieldValue": "Optimus SaaS"
+            },
+            {
+              "fieldId": "category",
+              "fieldValue": "Marketing"
+            }
+          ]
+        }
+      },
+      "id": "supabase-insert-node",
+      "name": "Save to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        0,
+        20
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "eenmVo5ZkgRkQExB",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate metadata for article\nconst chatResponse = $input.first();\nconst keyword = $('Extract Keyword').item.json.userKeyword;\nconst title = chatResponse.title;\nconst content = chatResponse.content;\n\nconsole.log('=== GENERATING METADATA ===');\nconsole.log('Title:', title);\nconsole.log('Content length:', content.length);\nconsole.log('Keyword:', keyword);\n\n// Generate slug from title\nfunction createSlug(text) {\n  return text\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '') // Remove accents\n    .replace(/[^a-z0-9\\s-]/g, '') // Remove special chars\n    .replace(/\\s+/g, '-') // Replace spaces with hyphens\n    .replace(/-+/g, '-') // Replace multiple hyphens\n    .trim()\n    .substring(0, 50); // Limit length\n}\n\n// Generate excerpt (first 200 characters)\nfunction createExcerpt(text) {\n  const cleaned = text\n    .replace(/#{1,6}\\s/g, '') // Remove markdown headers\n    .replace(/\\*\\*(.+?)\\*\\*/g, '$1') // Remove bold markdown\n    .replace(/\\*(.+?)\\*/g, '$1') // Remove italic markdown\n    .trim();\n  \n  if (cleaned.length <= 200) {\n    return cleaned;\n  }\n  \n  // Find last complete sentence within 200 chars\n  const truncated = cleaned.substring(0, 200);\n  const lastPeriod = truncated.lastIndexOf('.');\n  const lastExclamation = truncated.lastIndexOf('!');\n  const lastQuestion = truncated.lastIndexOf('?');\n  \n  const lastSentence = Math.max(lastPeriod, lastExclamation, lastQuestion);\n  \n  if (lastSentence > 100) {\n    return cleaned.substring(0, lastSentence + 1);\n  }\n  \n  return truncated + '...';\n}\n\n// Calculate read time (average 200 words per minute)\nfunction calculateReadTime(text) {\n  const words = text.split(/\\s+/).filter(word => word.length > 0).length;\n  const minutes = Math.ceil(words / 200);\n  return minutes + ' min';\n}\n\nconst slug = createSlug(title);\nconst excerpt = createExcerpt(content);\nconst readTime = calculateReadTime(content);\n\nconsole.log('Generated slug:', slug);\nconsole.log('Generated excerpt:', excerpt);\nconsole.log('Calculated read time:', readTime);\n\nreturn {\n  slug: slug,\n  excerpt: excerpt,\n  readTime: readTime,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "generate-metadata-node",
+      "name": "Generate Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle OpenAI Chat API errors\nconst errorData = $input.first();\nlet errorMessage = 'Erreur OpenAI Chat';\n\nconsole.log('OpenAI Chat Error:', errorData);\n\nif (errorData.json?.error?.message) {\n  errorMessage = errorData.json.error.message;\n} else if (errorData.error?.message) {\n  errorMessage = errorData.error.message;\n} else if (errorData.message) {\n  errorMessage = errorData.message;\n} else if (typeof errorData.error === 'string') {\n  errorMessage = errorData.error;\n}\n\nreturn {\n  success: false,\n  error: 'Erreur OpenAI: ' + errorMessage,\n  timestamp: new Date().toISOString(),\n  source: 'openai_chat_error'\n};"
+      },
+      "id": "c829c893-e220-4d65-ada8-25af902a0150",
+      "name": "OpenAI Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle Supabase save error\nconst errorData = $input.first();\nlet errorMessage = 'Erreur lors de la sauvegarde';\n\nconsole.log('Supabase Error:', errorData);\n\nif (errorData.json?.message) {\n  errorMessage = errorData.json.message;\n} else if (errorData.error?.message) {\n  errorMessage = errorData.error.message;\n} else if (errorData.message) {\n  errorMessage = errorData.message;\n}\n\nreturn {\n  success: false,\n  error: 'Erreur Supabase: ' + errorMessage,\n  timestamp: new Date().toISOString(),\n  source: 'supabase_error'\n};"
+      },
+      "id": "supabase-error-node",
+      "name": "Supabase Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle validation error\nconst inputData = $input.first();\n\nreturn {\n  success: false,\n  error: inputData.message || 'Le mot-clé est requis et ne peut pas être vide',\n  timestamp: new Date().toISOString(),\n  source: 'validation_error'\n};"
+      },
+      "id": "914ffe78-4e09-45c9-9c40-142084dce24e",
+      "name": "Validation Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process N8N OpenAI response for keyword-based workflow\ntry {\n  const response = $input.first();\n  console.log('=== PROCESSING OPENAI KEYWORD RESPONSE ===');\n  console.log('Response object:', JSON.stringify(response, null, 2));\n  \n  let aiText = '';\n  \n  // Extract AI response text\n  if (response.json?.output) {\n    aiText = response.json.output;\n  } else if (response.json?.text) {\n    aiText = response.json.text;\n  } else if (response.json?.choices?.[0]?.message?.content) {\n    aiText = response.json.choices[0].message.content;\n  } else if (response.text) {\n    aiText = response.text;\n  } else if (response.output) {\n    aiText = response.output;\n  } else {\n    throw new Error('Aucun contenu textuel trouvé dans la réponse OpenAI');\n  }\n  \n  console.log('Extracted AI text length:', aiText ? aiText.length : 0);\n  \n  if (!aiText || aiText.length < 50) {\n    throw new Error('Réponse OpenAI vide ou trop courte');\n  }\n  \n  // Parse title and content\n  let title = '';\n  let content = '';\n  \n  // Try French format first\n  const titreFR = aiText.match(/TITRE\\s*:\\s*(.+?)(?=\\n|CONTENU|$)/i);\n  const contenuFR = aiText.match(/CONTENU\\s*:\\s*([\\s\\S]+)/i);\n  \n  if (titreFR && contenuFR) {\n    title = titreFR[1].trim();\n    content = contenuFR[1].trim();\n  } else {\n    // Fallback: first line as title, rest as content\n    const lines = aiText.split('\\n').filter(line => line.trim());\n    title = lines[0] ? lines[0].trim().substring(0, 60) : 'Article généré par IA';\n    content = lines.slice(1).join('\\n').trim() || aiText.trim();\n  }\n  \n  // Clean up title\n  title = title.replace(/^(TITRE|TITLE)\\s*:\\s*/i, '').trim();\n  if (title.length > 60) {\n    title = title.substring(0, 57) + '...';\n  }\n  \n  // Clean up content\n  content = content\n    .replace(/^(TITRE|TITLE)\\s*:\\s*.+$/gim, '')\n    .replace(/^(CONTENU|CONTENT)\\s*:\\s*/gim, '')\n    .trim();\n  \n  // Quality check\n  const words = content.split(/\\s+/).filter(word => word.length > 0);\n  if (words.length < 50) {\n    throw new Error(`Article trop court: ${words.length} mots (minimum 50)`);\n  }\n  \n  console.log('=== FINAL PROCESSED RESULT ===');\n  console.log('Title:', title);\n  console.log('Content length:', content.length);\n  console.log('Word count:', words.length);\n  \n  return {\n    title: title,\n    content: content,\n    wordCount: words.length,\n    timestamp: new Date().toISOString()\n  };\n  \n} catch (error) {\n  console.error('=== PROCESSING ERROR ===');\n  console.error('Error:', error.message);\n  \n  throw new Error('Erreur de traitement: ' + error.message);\n}"
+      },
+      "id": "222792bf-c94b-4c6a-80d0-482dd5338f33",
+      "name": "Process Chat Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "prompt": "=Tu es un expert en rédaction d'articles marketing en français.\n\nMot-clé: {{ $json.userKeyword }}\n\nCrée un article complet et engageant basé sur ce mot-clé.\n\nL'article doit :\n- Avoir un titre accrocheur (maximum 60 caractères)\n- Contenir entre 500 et 800 mots\n- Être structuré avec des sous-titres en markdown (##)\n- Être écrit dans un style professionnel mais accessible\n- Inclure des conseils pratiques\n- Être optimisé SEO pour le mot-clé donné\n\nRéponds EXACTEMENT dans ce format :\n\nTITRE: [Le titre de l'article]\nCONTENU: [Le contenu complet de l'article avec sous-titres en markdown]",
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.7
+        }
+      },
+      "id": "d58f3d11-59b8-47c5-9624-cd0803a63248",
+      "name": "OpenAI Chat",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        -80
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "8YGpbQJJJxzWTFsi",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.error}}"
+            }
+          ]
+        }
+      },
+      "id": "5b939907-d3de-4ce0-b372-48a9f0d3bebe",
+      "name": "Validate Keyword",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract keyword and prepare for Chat Agent\nconst inputData = $input.first();\nlet keyword = '';\n\n// Extract from all possible locations (updated for keyword-based workflow)\nif (inputData.json?.prompt) {\n  keyword = inputData.json.prompt; // N8N receives keyword as 'prompt'\n} else if (inputData.json?.keyword) {\n  keyword = inputData.json.keyword;\n} else if (inputData.body?.prompt) {\n  keyword = inputData.body.prompt;\n} else if (inputData.body?.keyword) {\n  keyword = inputData.body.keyword;\n} else if (inputData.query?.prompt) {\n  keyword = inputData.query.prompt;\n} else if (inputData.query?.keyword) {\n  keyword = inputData.query.keyword;\n}\n\nconsole.log('Keyword-based workflow - Extracted keyword:', keyword);\n\nif (!keyword || typeof keyword !== 'string' || !keyword.trim()) {\n  return {\n    error: true,\n    message: 'Le mot-clé est requis et ne peut pas être vide'\n  };\n}\n\n// Basic keyword validation\nconst cleanKeyword = keyword.trim();\nif (cleanKeyword.length < 2) {\n  return {\n    error: true,\n    message: 'Le mot-clé doit contenir au moins 2 caractères'\n  };\n}\n\nif (cleanKeyword.length > 50) {\n  return {\n    error: true,\n    message: 'Le mot-clé ne peut pas dépasser 50 caractères'\n  };\n}\n\nreturn {\n  userKeyword: cleanKeyword,\n  error: false\n};"
+      },
+      "id": "95a028a2-d650-4037-9dcd-a30d3e904bd8",
+      "name": "Extract Keyword",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -1000,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-article-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b528ee7c-f0d3-480a-97ac-535ea2d523dc",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        20
+      ],
+      "webhookId": "ai-article-generation"
+    }
+  ],
+  "connections": {
+    "Success Response": {
+      "main": []
+    },
+    "Error Response": {
+      "main": []
+    },
+    "Save to Supabase": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Metadata": {
+      "main": [
+        [
+          {
+            "node": "Save to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Error": {
+      "main": [
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Error": {
+      "main": [
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Chat Response": {
+      "main": [
+        [
+          {
+            "node": "Generate Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat": {
+      "main": [
+        [
+          {
+            "node": "Process Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "OpenAI Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Keyword": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Chat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Keyword": {
+      "main": [
+        [
+          {
+            "node": "Validate Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fbc39d4741073daceb575c6bc0bb1f58bf694a3db83148c2d5445cf013d2eabf"
+  }
+}
