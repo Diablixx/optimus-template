@@ -85,7 +85,6 @@ latest.tar.gz
 
 # WordPress data (not needed for deployment)
 wordpress-data/
-src/
 
 # Claude temporary files
 .claude/
